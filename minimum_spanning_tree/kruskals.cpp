@@ -1,89 +1,82 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <string_view>
 #include <tuple>
 #include <algorithm>
 #include <numeric>
-
 using namespace std;
 
 class Graph {
     int size;
-    vector<tuple<int, int, int>> edges;  // (u, v, weight)
-    vector<string> vertex_labels;
-
+    vector<string> vertex_data;
+    vector<tuple<int, int, int>> edges;
 public:
-    Graph(int size) : size(size), vertex_labels(size) {}
+    Graph(int size) : size(size), vertex_data(size, "") {}
 
-    void add_vertex_data(int index, const string& label) {
-        if (0 <= index && index < size) vertex_labels[index] = label;
+    void add_vertex_data(int vertex, const string& data) {
+        vertex_data[vertex] = data;
     }
 
     void add_edge(int u, int v, int weight) {
-        if (0 <= u && u < size && 0 <= v && v < size) {
-            edges.emplace_back(u, v, weight);
-        }
+        edges.emplace_back(u, v, weight);
     }
 
-    int find(vector<int>& parent, int i) const {
+    // No const! Modifies parent for path compression.
+    int find(vector<int>& parent, int i) {
         if (parent[i] != i) {
-            parent[i] = find(parent, parent[i]);  // path compression
+            parent[i] = find(parent, parent[i]);
         }
         return parent[i];
     }
 
-    void union_sets(vector<int>& parent, vector<int>& rank, int x, int y) const {
+    // union_sets takes node indices, finds roots inside
+    void union_sets(vector<int>& parent, vector<int>& rank, int x, int y) {
         int root_x = find(parent, x);
         int root_y = find(parent, y);
 
+        if (root_x == root_y) return;
         if (rank[root_x] < rank[root_y]) {
             parent[root_x] = root_y;
-        } else if (rank[root_x] > rank[root_y]) {
+        }
+        else if (rank[root_x] > rank[root_y]) {
             parent[root_y] = root_x;
-        } else {
+        }
+        else {
             parent[root_y] = root_x;
             ++rank[root_x];
         }
     }
 
-    void kruskal() const {
+    void kruskal() {
         vector<tuple<int, int, int>> mst;
         int total_weight = 0;
-
-        // 1. Sort edges by weight
         vector<tuple<int, int, int>> sorted_edges = edges;
         sort(sorted_edges.begin(), sorted_edges.end(), [](const auto& a, const auto& b) {
             return get<2>(a) < get<2>(b);
         });
-
-        // 2. Initialize disjoint set
         vector<int> parent(size), rank(size, 0);
-        iota(parent.begin(), parent.end(), 0);  // parent[i] = i
+        iota(parent.begin(), parent.end(), 0);
 
-        // 3. Loop over edges
         for (const auto& [u, v, w] : sorted_edges) {
             int root_u = find(parent, u);
             int root_v = find(parent, v);
             if (root_u != root_v) {
                 mst.emplace_back(u, v, w);
                 total_weight += w;
-                union_sets(parent, rank, root_u, root_v);
+                union_sets(parent, rank, u, v); // Pass indices, not roots!
             }
         }
-
-        // 4. Output MST
         cout << "Edge\tWeight\n";
         for (const auto& [u, v, w] : mst) {
-            cout << vertex_labels[u] << "-" << vertex_labels[v] << "\t" << w << '\n';
+            cout << vertex_data[u] << " - " << vertex_data[v] << "\t  " << w << endl;
         }
-        cout << "Total Weight: " << total_weight << '\n';
+        cout << "Total Weight: " << total_weight << "\n";
     }
 };
 
 int main() {
     Graph g(7);
-    vector<string> labels = {"A", "B", "C", "D", "E", "F", "G"};
+    vector<string> labels = { "A", "B", "C", "D", "E", "F", "G" };
     for (int i = 0; i < labels.size(); ++i) {
         g.add_vertex_data(i, labels[i]);
     }
