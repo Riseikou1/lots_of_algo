@@ -12,18 +12,18 @@ class AVLTree:
     def getBalance(self, node):
         return self.getHeight(node.left) - self.getHeight(node.right) if node else 0
 
-    def rightRotate(self, y):
-        print('Rotate right on node',y.data)
-        x = y.left  # Assign left child of y to x(head node)
-        T2 = x.right  # Store x's right child
+    def rightRotate(self, x):
+        print('Rotate right on node',x.data)
+        y = x.left  # Assign left child of x to y(head node)
+        T2 = y.right  # Store x's right child
 
-        x.right = y  # Make y the right child of x(head node=x)
-        y.left = T2 # Move T2 to be y's left child.
+        y.right = x  # Make x the right child of y(head node=y)
+        x.left = T2 # Move T2 to be x's left child.
 
         y.height = 1 + max(self.getHeight(y.left), self.getHeight(y.right))
         x.height = 1 + max(self.getHeight(x.left), self.getHeight(x.right))
 
-        return x
+        return y
 
     def leftRotate(self, x):
         print('Rotate left on node ',x.data)

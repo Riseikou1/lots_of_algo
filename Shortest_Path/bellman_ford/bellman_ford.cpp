@@ -1,116 +1,117 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <string_view>
-#include <unordered_map>
 #include <limits>
-#include <optional>
-#include <tuple>
 #include <algorithm>
-
 using namespace std;
 
 class Graph {
-private:
     int size;
-    vector<tuple<int, int, int>> edges; // (from, to, weight)
-    unordered_map<string, int> label_to_index;
-    vector<string> index_to_label;
+    vector<vector<int>> adj_matrix;
+    vector<string> vertex_data;
 
 public:
-    Graph(int size) : size(size), index_to_label(size) {}
+    Graph(int size) : size(size), adj_matrix(size, vector<int>(size, 0)), vertex_data(size, "") {}
 
-    void add_vertex_data(int index, const string& label) {
-        if (index >= 0 && index < size) {
-            label_to_index[label] = index;
-            index_to_label[index] = label;
-        }
+    void add_edge(int u, int v, int weight) {
+        if (u >= 0 && u < size && v >= 0 && v < size)
+            adj_matrix[u][v] = weight;
     }
 
-    void add_edge(int from, int to, int weight) {
-        edges.emplace_back(from, to, weight);
+    void add_vertex_data(int vertex, const string& data) {
+        if (vertex >= 0 && vertex < size)
+            vertex_data[vertex] = data;
     }
 
-    optional<tuple<vector<int>, vector<int>>> bellman_ford(string_view start_label) const {
-        auto it = label_to_index.find(string(start_label));
-        if (it == label_to_index.end()) return nullopt;
-
-        int start = it->second;
-        vector<int> dist(size, numeric_limits<int>::max());
-        vector<int> pred(size, -1);
-        dist[start] = 0;
+    // Returns tuple: (negative_cycle_detected, distances, predecessors)
+    tuple<bool, vector<int>, vector<int>> bellman_ford(const string& start_vertex_data) const {
+        int start_vertex = find(vertex_data.begin(), vertex_data.end(), start_vertex_data) - vertex_data.begin();
+        vector<int> distances(size, numeric_limits<int>::max());
+        vector<int> predecessors(size, -1);
+        distances[start_vertex] = 0;
 
         for (int i = 0; i < size - 1; ++i) {
-            for (const auto& [u, v, w] : edges) {
-                if (dist[u] != numeric_limits<int>::max() && dist[u] + w < dist[v]) {
-                    dist[v] = dist[u] + w;
-                    pred[v] = u;
+            bool updated = false;
+            for (int u = 0; u < size; ++u) {
+                for (int v = 0; v < size; ++v) {
+                    if (adj_matrix[u][v] != 0 && distances[u] != numeric_limits<int>::max()) {
+                        int new_dist = distances[u] + adj_matrix[u][v];
+                        if (new_dist < distances[v]) {
+                            distances[v] = new_dist;
+                            predecessors[v] = u;
+                            updated = true;
+                        }
+                    }
+                }
+            }
+            if (!updated) break;
+        }
+        // Negative cycle detection
+        for (int u = 0; u < size; ++u) {
+            for (int v = 0; v < size; ++v) {
+                if (adj_matrix[u][v] != 0 && distances[u] != numeric_limits<int>::max()) {
+                    if (distances[u] + adj_matrix[u][v] < distances[v]) {
+                        return {true, {}, {}}; // Negative cycle detected
+                    }
                 }
             }
         }
-
-        for (const auto& [u, v, w] : edges) {
-            if (dist[u] != numeric_limits<int>::max() && dist[u] + w < dist[v]) {
-                return nullopt; // negative cycle
-            }
-        }
-
-        return make_tuple(dist, pred);
+        return {false, distances, predecessors};
     }
 
-    string get_path(string_view start_label, string_view end_label, const vector<int>& pred) const {
-        int start = label_to_index.at(string(start_label));
-        int end = label_to_index.at(string(end_label));
+    // Path as a string: D->A->E, etc.
+    string get_path(const vector<int>& predecessors, const string& start_vertex_data, const string& end_vertex_data) const {
+        int start_vertex = find(vertex_data.begin(), vertex_data.end(), start_vertex_data) - vertex_data.begin();
+        int end_vertex = find(vertex_data.begin(), vertex_data.end(), end_vertex_data) - vertex_data.begin();
         vector<string> path;
-
-        for (int curr = end; curr != -1; curr = pred[curr]) {
-            path.push_back(index_to_label[curr]);
-            if (curr == start) break;
+        int current = end_vertex;
+        while (current != -1) {
+            path.push_back(vertex_data[current]);
+            if (current == start_vertex) break;
+            current = predecessors[current];
         }
-
+        if (path.back() != vertex_data[start_vertex]) return ""; // No path exists
         reverse(path.begin(), path.end());
-        if (path.front() != start_label) return "No path";
-
-        string result;
-        for (const auto& node : path) result += node + "->";
-        result.pop_back(); result.pop_back(); // remove last arrow
+        string result = path[0];
+        for (size_t i = 1; i < path.size(); ++i)
+            result += "->" + path[i];
         return result;
     }
 };
+
 int main() {
     Graph g(5);
-
     g.add_vertex_data(0, "A");
     g.add_vertex_data(1, "B");
     g.add_vertex_data(2, "C");
     g.add_vertex_data(3, "D");
     g.add_vertex_data(4, "E");
 
-    g.add_edge(3, 0, 4);  // D -> A
-    g.add_edge(3, 2, 7);  // D -> C
-    g.add_edge(3, 4, 3);  // D -> E
-    g.add_edge(0, 2, 4);  // A -> C
-    g.add_edge(2, 0, -3); // C -> A
-    g.add_edge(0, 4, 5);  // A -> E
-    g.add_edge(4, 2, 3);  // E -> C
-    g.add_edge(1, 2, -4); // B -> C
-    g.add_edge(4, 1, 2);  // E -> B
+    g.add_edge(3, 0, 4);   // D -> A, weight 4
+    g.add_edge(3, 2, 7);   // D -> C, weight 7
+    g.add_edge(3, 4, 3);   // D -> E, weight 3
+    g.add_edge(0, 2, 4);   // A -> C, weight 4
+    g.add_edge(2, 0, -3);  // C -> A, weight -3
+    g.add_edge(0, 4, 5);   // A -> E, weight 5
+    g.add_edge(4, 2, 3);   // E -> C, weight 3
+    g.add_edge(1, 2, -4);  // B -> C, weight -4
+    g.add_edge(4, 1, 2);   // E -> B, weight 2
 
-    auto result = g.bellman_ford("D");
-    if (!result) {
-        cout << "Negative weight cycle detected. Cannot compute shortest paths.\n";
-        return 0;
-    }
+    cout << "\nThe Bellman-Ford Algorithm starting from vertex D:\n";
+    auto [negative_cycle, distances, predecessors] = g.bellman_ford("D");
 
-    const auto& [distances, preds] = *result;
-    for (int i = 0; i < distances.size(); ++i) {
-        cout << "Shortest path from D to " << g.index_to_label[i] << ": ";
-        if (distances[i] == numeric_limits<int>::max()) {
-            cout << "No path, Distance: ∞\n";
-        } else {
-            cout << g.get_path("D", g.index_to_label[i], preds) << ", Distance: " << distances[i] << '\n';
+    if (!negative_cycle) {
+        for (int i = 0; i < g.vertex_data.size(); ++i) {
+            if (distances[i] != numeric_limits<int>::max()) {
+                string path = g.get_path(predecessors, "D", g.vertex_data[i]);
+                cout << "Shortest path from D to " << g.vertex_data[i] << ": " << path
+                     << ", Distance: " << distances[i] << endl;
+            } else {
+                cout << "No path from D to " << g.vertex_data[i] << ", Distance: Infinity" << endl;
+            }
         }
+    } else {
+        cout << "Negative weight cycle detected. Cannot compute shortest paths.\n";
     }
-
     return 0;
 }
