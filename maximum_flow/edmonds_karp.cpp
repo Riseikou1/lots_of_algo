@@ -24,13 +24,13 @@ public:
         }
     }
 
-    bool bfs(const int source, const int sink, vector<int>& parent) const  {
+    bool bfs(const int source, const int sink, vector<int>& parent){
         vector<bool> visited(size, false);
+        fill(parent.begin(), parent.end(), -1);
         queue<int> q;
 
         q.push(source);
         visited[source] = true;
-        parent[source] = -1;
 
         while (!q.empty()) {
             int u = q.front();

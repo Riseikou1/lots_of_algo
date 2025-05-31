@@ -24,7 +24,7 @@ public:
     }
 
     // Returns tuple: (negative_cycle_detected, distances, predecessors)
-    tuple<bool, vector<int>, vector<int>> bellman_ford(const string& start_vertex_data) const {
+    tuple<bool, vector<int>, vector<int>> bellman_ford(const string& start_vertex_data){
         int start_vertex = find(vertex_data.begin(), vertex_data.end(), start_vertex_data) - vertex_data.begin();
         vector<int> distances(size, numeric_limits<int>::max());
         vector<int> predecessors(size, -1);
@@ -60,7 +60,7 @@ public:
     }
 
     // Path as a string: D->A->E, etc.
-    string get_path(const vector<int>& predecessors, const string& start_vertex_data, const string& end_vertex_data) const {
+    string get_path(const vector<int>& predecessors, const string& start_vertex_data, const string& end_vertex_data){
         int start_vertex = find(vertex_data.begin(), vertex_data.end(), start_vertex_data) - vertex_data.begin();
         int end_vertex = find(vertex_data.begin(), vertex_data.end(), end_vertex_data) - vertex_data.begin();
         vector<string> path;
